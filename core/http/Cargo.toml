@@ -29,7 +29,7 @@ time = "0.2.11"
 indexmap = { version = "1.5.2", features = ["std"] }
 tokio-rustls = { version = "0.22.0", optional = true }
 tokio = { version = "1.0", features = ["net", "sync", "time"] }
-log = "0.4"
+tracing = "0.1.19"
 ref-cast = "1.0"
 uncased = "0.9.6"
 parking_lot = "0.11"

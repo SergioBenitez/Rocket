@@ -115,17 +115,17 @@ impl Fairing for Compression {
                         if let Value::String(s) = ex {
                             let mt = MediaType::parse_flexible(s);
                             if mt.is_none() {
-                                warn_!("Ignoring invalid media type '{:?}'", s);
+                                warn!("Ignoring invalid media type '{:?}'", s);
                             }
                             mt
                         } else {
-                            warn_!("Ignoring non-string media type '{:?}'", ex);
+                            warn!("Ignoring non-string media type '{:?}'", ex);
                             None
                         }
                     }).collect();
                 }
                 None => {
-                    warn_!(
+                    warn!(
                         "Exclusions is not an array; using default compression exclusions '{:?}'",
                         ctxt.exclusions
                     );
@@ -134,7 +134,7 @@ impl Fairing for Compression {
             Err(ConfigError::Missing(_)) => { /* ignore missing */ }
             Err(e) => {
                 e.pretty_print();
-                warn_!(
+                warn!(
                     "Using default compression exclusions '{:?}'",
                     ctxt.exclusions
                 );

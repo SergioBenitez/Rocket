@@ -1,6 +1,6 @@
 use crate::{Rocket, Request, Response, Data, Build, Orbit};
 use crate::fairing::{Fairing, Info, Kind};
-use crate::logger::PaintExt;
+use crate::trace::PaintExt;
 
 use yansi::Paint;
 
@@ -104,12 +104,12 @@ impl Fairings {
 
     pub fn pretty_print(&self) {
         if !self.all_fairings.is_empty() {
-            launch_info!("{}{}:", Paint::emoji("📡 "), Paint::magenta("Fairings"));
-        }
-
-        for fairing in &self.all_fairings {
-            launch_info_!("{} ({})", Paint::default(fairing.info().name).bold(),
-                Paint::blue(fairing.info().kind).bold());
+            let span = info_span!(target: "rocket::support", "fairings", "{}{}:", Paint::emoji("📡 "), Paint::magenta("Fairings"));
+            let _e = span.enter();
+            for fairing in &self.all_fairings {
+                info!(target: "rocket::support", "{} ({})", Paint::default(fairing.info().name).bold(),
+                    Paint::blue(fairing.info().kind).bold());
+            }
         }
     }
 }

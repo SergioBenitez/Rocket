@@ -45,7 +45,7 @@ diesel_mysql_pool = ["databases", "diesel/mysql", "diesel/r2d2"]
 tokio = { version = "1.0", optional = true }
 rocket_contrib_codegen = { version = "0.5.0-dev", path = "../codegen", optional = true }
 rocket = { version = "0.5.0-dev", path = "../../core/lib/", default-features = false }
-log = "0.4"
+tracing = { version = "0.1", default-features = false }
 
 # Serialization and templating dependencies.
 serde = { version = "1.0", optional = true, features = ["derive"] }

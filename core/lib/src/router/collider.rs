@@ -146,7 +146,7 @@ fn queries_match(route: &Route, req: &Request<'_>) -> bool {
 
     for route_seg in route_query_fields {
         if !req.uri().query_segments().any(|req_seg| req_seg == route_seg) {
-            trace_!("request {} missing static query {:?}", req, route_seg);
+            trace!("request {} missing static query {:?}", req, route_seg);
             return false;
         }
     }

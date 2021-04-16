@@ -120,7 +120,7 @@ mod secret_key;
 #[doc(hidden)] pub use config::pretty_print_error;
 
 pub use config::Config;
-pub use crate::logger::LogLevel;
+pub use crate::trace::LogLevel;
 pub use tls::TlsConfig;
 
 #[cfg(feature = "secrets")]
@@ -134,7 +134,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::config::{Config, TlsConfig};
-    use crate::logger::LogLevel;
+    use crate::trace::LogLevel;
     use crate::data::{Limits, ToByteUnit};
 
     #[test]

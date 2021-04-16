@@ -106,7 +106,7 @@ impl<A, B> Body<A, B>
     pub async fn into_bytes(mut self) -> Option<Vec<u8>> {
         let mut vec = Vec::new();
         if let Err(e) = self.as_reader().read_to_end(&mut vec).await {
-            error_!("Error reading body: {:?}", e);
+            error!("Error reading body: {:?}", e);
             return None;
         }
 
@@ -119,7 +119,7 @@ impl<A, B> Body<A, B>
         self.into_bytes().await.and_then(|bytes| match String::from_utf8(bytes) {
             Ok(string) => Some(string),
             Err(e) => {
-                error_!("Body is invalid UTF-8: {}", e);
+                error!("Body is invalid UTF-8: {}", e);
                 None
             }
         })

@@ -377,9 +377,10 @@ impl Template {
         where S: Into<Cow<'static, str>>, C: Serialize
     {
         let ctxt = rocket.state::<ContextManager>().map(ContextManager::context).or_else(|| {
-            warn!("Uninitialized template context: missing fairing.");
-            info!("To use templates, you must attach `Template::fairing()`.");
-            info!("See the `Template` documentation for more information.");
+            warn_span!("missing_fairing", "Uninitialized template context: missing fairing.").in_scope(|| {
+                info!("To use templates, you must attach `Template::fairing()`.");
+                info!("See the `Template` documentation for more information.");
+            });
             None
         })?;
 
@@ -394,19 +395,20 @@ impl Template {
         let name = &*self.name;
         let info = ctxt.templates.get(name).ok_or_else(|| {
             let ts: Vec<_> = ctxt.templates.keys().map(|s| s.as_str()).collect();
-            error_!("Template '{}' does not exist.", name);
-            info_!("Known templates: {}", ts.join(", "));
-            info_!("Searched in {:?}.", ctxt.root);
+            error_span!("Template does not exist.", template = %name).in_scope(|| {
+                info!("Known templates: {}", ts.join(","));
+                info!("Searched in {:?}.", ctxt.root);
+            });
             Status::InternalServerError
         })?;
 
         let value = self.value.ok_or_else(|| {
-            error_!("The provided template context failed to serialize.");
+            error!("The provided template context failed to serialize.");
             Status::InternalServerError
         })?;
 
         let string = ctxt.engines.render(name, &info, value).ok_or_else(|| {
-            error_!("Template '{}' failed to render.", name);
+            error!(template = %name, "Template failed to render.");
             Status::InternalServerError
         })?;
 
@@ -421,9 +423,10 @@ impl<'r> Responder<'r, 'static> for Template {
     fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
         let (render, content_type) = {
             let ctxt = req.rocket().state::<ContextManager>().ok_or_else(|| {
-                error_!("Uninitialized template context: missing fairing.");
-                info_!("To use templates, you must attach `Template::fairing()`.");
-                info_!("See the `Template` documentation for more information.");
+                error_span!("missing_fairing", "Uninitialized template context: missing fairing.").in_scope(|| {
+                    info!("To use templates, you must attach `Template::fairing()`.");
+                    info!("See the `Template` documentation for more information.");
+                });
                 Status::InternalServerError
             })?.context();
 

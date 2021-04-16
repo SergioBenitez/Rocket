@@ -62,10 +62,11 @@ mod context {
 
             let watcher = match watcher {
                 Ok(watcher) => Some((watcher, Mutex::new(rx))),
-                Err(e) => {
-                    warn!("Failed to enable live template reloading: {}", e);
-                    debug_!("Reload error: {:?}", e);
-                    warn_!("Live template reloading is unavailable.");
+                Err(error) => {
+                    warn_span!("Failed to enable live template reloading", %error).in_scope(|| {
+                        debug!(reload_error = ?error);
+                        warn!("Live template reloading is unavailable.");
+                    });
                     None
                 }
             };
@@ -94,20 +95,23 @@ mod context {
                 .map(|(_, rx)| rx.lock().expect("fsevents lock").try_iter().count() > 0);
 
             if let Some(true) = templates_changes {
-                info_!("Change detected: reloading templates.");
+                let span = info_span!("Change detected: reloading templates.");
+                let _e = span.enter();
                 let root = self.context().root.clone();
                 if let Some(mut new_ctxt) = Context::initialize(&root) {
                     match callback(&mut new_ctxt.engines) {
-                        Ok(()) => *self.context_mut() = new_ctxt,
-                        Err(e) => {
-                            warn_!("The template customization callback returned an error:");
-                            warn_!("{}", e);
-                            warn_!("The existing templates will remain active.");
+                        Ok(()) => {
+                            *self.context_mut() = new_ctxt;
+                            debug!("reloaded!");
+                        }
+                        Err(error) => {
+                            warn!(%error, "The template customization callback returned an error");
+                            warn!("The existing templates will remain active.");
                         }
                     }
                 } else {
-                    warn_!("An error occurred while reloading templates.");
-                    warn_!("The existing templates will remain active.");
+                    warn!("An error occurred while reloading templates.");
+                    warn!("The existing templates will remain active.");
                 };
             }
         }
@@ -159,29 +163,29 @@ impl Fairing for TemplateFairing {
             Some(mut ctxt) => {
                 match (self.callback)(&mut ctxt.engines) {
                     Ok(()) => Ok(rocket.manage(ContextManager::new(ctxt))),
-                    Err(e) => {
-                        error_!("The template customization callback returned an error:");
-                        error_!("{}", e);
+                    Err(error) => {
+                        error!(%error, "The template customization callback returned an error");
                         Err(rocket)
                     }
                 }
             }
             None => {
-                error_!("Launch will be aborted due to failed template initialization.");
+                error!("Launch will be aborted due to failed template initialization.");
                 Err(rocket)
             }
         }
     }
 
     async fn on_liftoff(&self, rocket: &Rocket<Orbit>) {
-        use rocket::{figment::Source, logger::PaintExt, yansi::Paint};
+        use rocket::{figment::Source, trace::PaintExt, yansi::Paint};
 
         let cm = rocket.state::<ContextManager>()
             .expect("Template ContextManager registered in on_ignite");
 
-        info!("{}{}:", Paint::emoji("📐 "), Paint::magenta("Templating"));
-        info_!("directory: {}", Paint::white(Source::from(&*cm.context().root)));
-        info_!("engines: {:?}", Paint::white(Engines::ENABLED_EXTENSIONS));
+        let span = info_span!("templating", "{}{}:", Paint::emoji("📐 "), Paint::magenta("Templating"));
+        let _e = span.enter();
+        info!(directory = %Paint::white(Source::from(&*cm.context().root)));
+        info!(engines = ?Paint::white(Engines::ENABLED_EXTENSIONS));
     }
 
     #[cfg(debug_assertions)]

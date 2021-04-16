@@ -4,6 +4,7 @@ use rocket::State;
 use rocket::outcome::Outcome;
 use rocket::request::{self, FromRequest, Request};
 use rocket::fairing::AdHoc;
+use rocket::trace::info;
 
 #[derive(Default, Debug)]
 pub struct Atomics {
@@ -21,12 +22,12 @@ impl<'r> FromRequest<'r> for Guard1 {
     type Error = ();
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, ()> {
-        rocket::info_!("-- 1 --");
+        info!("-- 1 --");
 
         let atomics = try_outcome!(req.guard::<State<'_, Atomics>>().await);
         atomics.uncached.fetch_add(1, Ordering::Relaxed);
         req.local_cache(|| {
-            rocket::info_!("1: populating cache!");
+            info!("1: populating cache!");
             atomics.cached.fetch_add(1, Ordering::Relaxed)
         });
 
@@ -39,7 +40,7 @@ impl<'r> FromRequest<'r> for Guard2 {
     type Error = ();
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, ()> {
-        rocket::info_!("-- 2 --");
+        info!("-- 2 --");
 
         try_outcome!(req.guard::<Guard1>().await);
         Outcome::Success(Guard2)
@@ -51,12 +52,12 @@ impl<'r> FromRequest<'r> for Guard3 {
     type Error = ();
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, ()> {
-        rocket::info_!("-- 3 --");
+        info!("-- 3 --");
 
         let atomics = try_outcome!(req.guard::<State<'_, Atomics>>().await);
         atomics.uncached.fetch_add(1, Ordering::Relaxed);
         req.local_cache_async(async {
-            rocket::info_!("3: populating cache!");
+            info!("3: populating cache!");
             atomics.cached.fetch_add(1, Ordering::Relaxed)
         }).await;
 
@@ -69,7 +70,7 @@ impl<'r> FromRequest<'r> for Guard4 {
     type Error = ();
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, ()> {
-        rocket::info_!("-- 4 --");
+        info!("-- 4 --");
 
         try_outcome!(Guard3::from_request(req).await);
         Outcome::Success(Guard4)

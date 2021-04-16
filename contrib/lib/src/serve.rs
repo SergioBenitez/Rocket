@@ -317,8 +317,7 @@ impl StaticFiles {
 
         let path = path.as_ref();
         if !path.is_dir() {
-            error!("`StaticFiles` supplied with invalid path");
-            info_!("'{}' is not a directory", Paint::white(path.display()));
+            error!(path = %Paint::white(path.display()), "Bad `StaticFiles` path: invalid directory");
             panic!("refusing to continue due to invalid static files path");
         }
 

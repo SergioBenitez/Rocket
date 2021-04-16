@@ -19,4 +19,7 @@ members = [
 
   "pastebin",
   "todo",
+
+  "trace_env_logger",
+  "trace_subscriber",
 ]

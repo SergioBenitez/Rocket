@@ -21,11 +21,11 @@ impl Engine for Tera {
 
         // Finally try to tell Tera about all of the templates.
         if let Err(e) = tera.add_template_files(tera_templates) {
-            error!("Failed to initialize Tera templating.");
-
+            let span = error_span!("Failed to initialize Tera templating.");
+            let _e = span.enter();
             let mut error = Some(&e as &dyn Error);
             while let Some(err) = error {
-                info_!("{}", err);
+                error!(error = %err);
                 error = err.source();
             }
 
@@ -36,17 +36,19 @@ impl Engine for Tera {
     }
 
     fn render<C: Serialize>(&self, name: &str, context: C) -> Option<String> {
+        let span = info_span!("Rendering Tera template", template = %name);
+        let _e = span.enter();
         if self.get_template(name).is_err() {
-            error_!("Tera template '{}' does not exist.", name);
+            error!("Tera template '{}' does not exist.", name);
             return None;
         };
 
         let tera_ctx = match Context::from_serialize(context) {
             Ok(ctx) => ctx,
             Err(_) => {
-                error_!(
+                error!(
                     "Error generating context when rendering Tera template '{}'.",
-                    name
+                    name,
                 );
                 return None;
             }
@@ -55,11 +57,11 @@ impl Engine for Tera {
         match Tera::render(self, name, &tera_ctx) {
             Ok(string) => Some(string),
             Err(e) => {
-                error_!("Error rendering Tera template '{}'.", name);
-
+                let span = error_span!("Error rendering Tera template", template = %name);
+                let _e = span.enter();
                 let mut error = Some(&e as &dyn Error);
                 while let Some(err) = error {
-                    error_!("{}", err);
+                    error!(error = %err);
                     error = err.source();
                 }
 

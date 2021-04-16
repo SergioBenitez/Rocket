@@ -6,8 +6,8 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use log::{debug, error};
 use hyper::server::accept::Accept;
+use tracing::{debug, error};
 
 use tokio::time::Sleep;
 use tokio::io::{AsyncRead, AsyncWrite};

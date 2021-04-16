@@ -173,52 +173,57 @@ impl Drop for Error {
         }
 
         match self.kind() {
-            ErrorKind::Bind(ref e) => {
-                error!("Rocket failed to bind network socket to given address/port.");
-                info_!("{}", e);
+            ErrorKind::Bind(ref error) => {
+                error_span!("bind_error", "Rocket failed to bind network socket to given address/port.").in_scope(|| {
+                    info!(%error);
+                });
                 panic!("aborting due to socket bind error");
             }
-            ErrorKind::Io(ref e) => {
-                error!("Rocket failed to launch due to an I/O error.");
-                info_!("{}", e);
+            ErrorKind::Io(ref error) => {
+                error_span!("io_error", "Rocket failed to launch due to an I/O error.").in_scope(|| {
+                    info!(%error);
+                });
                 panic!("aborting due to i/o error");
             }
             ErrorKind::Collisions(ref collisions) => {
                 fn log_collisions<T: fmt::Display>(kind: &str, collisions: &[(T, T)]) {
                     if collisions.is_empty() { return }
 
-                    error!("Rocket failed to launch due to the following {} collisions:", kind);
+                    let span = error_span!("collisions", "Rocket failed to launch due to the following {} collisions:", kind);
+                    let _e = span.enter();
                     for &(ref a, ref b) in collisions {
-                        info_!("{} {} {}", a, Paint::red("collides with").italic(), b)
+                        info!("{} {} {}", a, Paint::red("collides with").italic(), b)
                     }
                 }
 
                 log_collisions("route", &collisions.routes);
                 log_collisions("catcher", &collisions.catchers);
 
-                info_!("Note: Route collisions can usually be resolved by ranking routes.");
+                info!("Note: Route collisions can usually be resolved by ranking routes.");
                 panic!("routing collisions detected");
             }
             ErrorKind::FailedFairings(ref failures) => {
-                error!("Rocket failed to launch due to failing fairings:");
-                for fairing in failures {
-                    info_!("{}", fairing.name);
-                }
-
+                error_span!("fairing_error", "Rocket failed to launch due to failing fairings:").in_scope(|| {
+                    for fairing in failures {
+                        info!("{}", fairing.name);
+                    }
+                });
                 panic!("aborting due to launch fairing failure");
             }
-            ErrorKind::Runtime(ref err) => {
-                error!("An error occured in the runtime:");
-                info_!("{}", err);
+            ErrorKind::Runtime(ref error) => {
+                error_span!("runtime_error", "An error occured in the runtime:").in_scope(|| {
+                    info!(%error);
+                });
                 panic!("aborting due to runtime failure");
             }
-            ErrorKind::InsecureSecretKey(profile) => {
-                error!("secrets enabled in non-debug without `secret_key`");
-                info_!("selected profile: {}", Paint::white(profile));
-                info_!("disable `secrets` feature or configure a `secret_key`");
+            ErrorKind::InsecureSecretKey(ref profile) => {
+                error_span!("insecure_secret_key", "secrets enabled in non-debug without `secret_key`").in_scope(|| {
+                    info!("selected profile: {}", Paint::white(profile));
+                    info!("disable `secrets` feature or configure a `secret_key`");
+                });
                 panic!("aborting due to insecure configuration")
             }
-            ErrorKind::Config(error) => {
+            ErrorKind::Config(ref error) => {
                 crate::config::pretty_print_error(error.clone());
                 panic!("aborting due to invalid configuration")
             }

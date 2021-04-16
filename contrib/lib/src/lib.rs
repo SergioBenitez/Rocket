@@ -40,7 +40,7 @@
 //! This crate is expected to grow with time, bringing in outside crates to be
 //! officially supported by Rocket.
 
-#[allow(unused_imports)] #[macro_use] extern crate log;
+#[allow(unused_imports)] #[macro_use] extern crate tracing;
 #[allow(unused_imports)] #[macro_use] extern crate rocket;
 
 #[cfg(feature="json")] #[macro_use] pub mod json;

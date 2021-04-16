@@ -165,7 +165,7 @@ impl<'r, 'i> MultipartParser<'r, 'i> {
         };
 
         // A field with a content-type is data; one without is "value".
-        trace_!("multipart field: {:?}", field.name());
+        trace!(field_name=?field.name(), "multipart field");
         let content_type = field.content_type().and_then(|m| m.as_ref().parse().ok());
         let field = if let Some(content_type) = content_type {
             let (name, file_name) = match (field.name(), field.file_name()) {

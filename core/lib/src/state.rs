@@ -177,7 +177,7 @@ impl<'r, T: Send + Sync + 'static> FromRequest<'r> for State<'r, T> {
         match req.rocket().state::<T>() {
             Some(state) => Outcome::Success(State(state)),
             None => {
-                error_!("Attempted to retrieve unmanaged state `{}`!", std::any::type_name::<T>());
+                error!("Attempted to retrieve unmanaged state `{}`!", std::any::type_name::<T>());
                 Outcome::Failure((Status::InternalServerError, ()))
             }
         }

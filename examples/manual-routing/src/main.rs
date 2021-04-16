@@ -9,6 +9,7 @@ use rocket::http::{Status, Method::*};
 use rocket::response::{Responder, status::Custom};
 use rocket::outcome::{try_outcome, IntoOutcome};
 use rocket::tokio::fs::File;
+use rocket::trace::info;
 
 fn forward<'r>(_req: &'r Request, data: Data) -> route::BoxFuture<'r> {
     Box::pin(async move { route::Outcome::forward(data) })
@@ -39,21 +40,23 @@ fn echo_url<'r>(req: &'r Request, _: Data) -> route::BoxFuture<'r> {
 fn upload<'r>(req: &'r Request, data: Data) -> route::BoxFuture<'r> {
     Box::pin(async move {
         if !req.content_type().map_or(false, |ct| ct.is_plain()) {
-            println!("    => Content-Type of upload must be text/plain. Ignoring.");
+            info!("    => Content-Type of upload must be text/plain. Ignoring.");
             return route::Outcome::failure(Status::BadRequest);
         }
 
-        let file = File::create(env::temp_dir().join("upload.txt")).await;
-        if let Ok(file) = file {
-            if let Ok(n) = data.open(2.mebibytes()).stream_to(file).await {
-                return route::Outcome::from(req, format!("OK: {} bytes uploaded.", n));
-            }
+        match File::create(env::temp_dir().join("upload.txt")).await {
+            Ok(file) => {
+                if let Ok(n) = data.open(2.mebibytes()).stream_to(file).await {
+                    return route::Outcome::from(req, format!("OK: {} bytes uploaded.", n));
+                }
 
-            println!("    => Failed copying.");
-            route::Outcome::failure(Status::InternalServerError)
-        } else {
-            println!("    => Couldn't open file: {:?}", file.unwrap_err());
-            route::Outcome::failure(Status::InternalServerError)
+                info!("    => Failed copying.");
+                route::Outcome::failure(Status::InternalServerError)
+            }
+            Err(error) => {
+                info!(?error, "    => Couldn't open file");
+                route::Outcome::failure(Status::InternalServerError)
+            }
         }
     })
 }

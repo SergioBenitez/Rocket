@@ -19,14 +19,14 @@ edition = "2018"
 all-features = true
 
 [features]
-default = []
+default = ["log"]
 tls = ["rocket_http/tls"]
 secrets = ["rocket_http/private-cookies"]
+log = ["log_crate", "tracing/log", "tracing-subscriber/tracing-log", "tracing-log"]
 
 [dependencies]
 futures = "0.3.0"
 yansi = "0.5"
-log = { version = "0.4", features = ["std"] }
 num_cpus = "1.0"
 time = "0.2.11"
 memchr = "2" # TODO: Use pear instead.
@@ -44,6 +44,9 @@ pin-project-lite = "0.2"
 indexmap = { version = "1.0", features = ["serde-1"] }
 tempfile = "3"
 async-trait = "0.1.43"
+tracing = "0.1.19"
+tracing-log = { version = "0.1", optional = true }
+log_crate = { package = "log", version = "0.4", optional = true }
 
 [dependencies.state]
 git = "https://github.com/SergioBenitez/state.git"
@@ -74,6 +77,16 @@ features = ["io"]
 
 [dependencies.bytes]
 version = "1.0"
+
+[dependencies.tracing-subscriber]
+version = "0.2.15"
+default-features = false
+features = ["fmt", "env-filter", "smallvec"]
+
+[dependencies.tracing-futures]
+version = "0.2"
+default-features = false
+features = ["std-future"]
 
 [build-dependencies]
 yansi = "0.5"

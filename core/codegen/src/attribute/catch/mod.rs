@@ -68,13 +68,18 @@ pub fn _catch(
                     #__status: #Status,
                     #__req: &'_b #Request<'_>
                 ) -> #_catcher::BoxFuture<'_b> {
+                    use #_trace::Instrument as _;
                     #_Box::pin(async move {
                         let __response = #catcher_response;
                         #Response::build()
                             .status(#__status)
                             .merge(__response)
                             .ok()
-                    })
+                    }.instrument(#_trace::info_span!(
+                        stringify!(#user_catcher_fn_name),
+                        status = %#__status,
+                        "Catcher: {}", stringify!(#user_catcher_fn_name)
+                    )))
                 }
 
                 #_catcher::StaticInfo {

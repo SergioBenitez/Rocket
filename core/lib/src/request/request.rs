@@ -245,7 +245,7 @@ impl<'r> Request<'r> {
             .get_one("X-Real-IP")
             .and_then(|ip| {
                 ip.parse()
-                    .map_err(|_| warn_!("'X-Real-IP' header is malformed: {}", ip))
+                    .map_err(|_| warn!("'X-Real-IP' header is malformed: {}", ip))
                     .ok()
             })
     }

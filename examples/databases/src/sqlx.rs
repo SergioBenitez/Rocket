@@ -1,6 +1,7 @@
 use rocket::{Rocket, State, Build, futures};
 use rocket::fairing::{self, AdHoc};
 use rocket::response::status::Created;
+use rocket::trace::error;
 use rocket_contrib::json::Json;
 
 use futures::stream::TryStreamExt;

@@ -285,50 +285,53 @@ impl Config {
     }
 
     pub(crate) fn pretty_print(&self, figment: &Figment) {
-        use crate::logger::PaintExt;
+        use crate::trace::PaintExt;
 
-        launch_info!("{}Configured for {}.", Paint::emoji("🔧 "), figment.profile());
-
-        launch_info_!("address: {}", Paint::default(&self.address).bold());
-        launch_info_!("port: {}", Paint::default(&self.port).bold());
-        launch_info_!("workers: {}", Paint::default(self.workers).bold());
+        let span = info_span!(target: "rocket::support", "configured",
+            "{}Configured for {}.", Paint::emoji("🔧 "), figment.profile());
+        let _e = span.enter();
+        info!(target: "rocket::support", address = %&self.address);
+        info!(target: "rocket::support", port = %&self.port);
+        info!(target: "rocket::support", workers = %self.workers);
 
         let ka = self.keep_alive;
         if ka > 0 {
-            launch_info_!("keep-alive: {}", Paint::default(format!("{}s", ka)).bold());
+            info!(target: "rocket::support", keep_alive = %format!("{}s", ka));
         } else {
-            launch_info_!("keep-alive: {}", Paint::default("disabled").bold());
+            info!(target: "rocket::support", keep_alive = %"disabled");
         }
 
-        launch_info_!("limits: {}", Paint::default(&self.limits).bold());
+        info!(target: "rocket::support", limits = %&self.limits);
         match self.tls_enabled() {
-            true => launch_info_!("tls: {}", Paint::default("enabled").bold()),
-            false => launch_info_!("tls: {}", Paint::default("disabled").bold()),
+            true => info!(target: "rocket::support", tls = %"enabled"),
+            false => info!(target: "rocket::support", tls = %"disabled"),
         }
 
         #[cfg(feature = "secrets")] {
-            launch_info_!("secret key: {:?}", Paint::default(&self.secret_key).bold());
+            info!(target: "rocket::support", secret_key = ?&self.secret_key);
             if !self.secret_key.is_provided() {
-                warn!("secrets enabled without a stable `secret_key`");
-                launch_info_!("disable `secrets` feature or configure a `secret_key`");
-                launch_info_!("this becomes an {} in non-debug profiles", Paint::red("error"));
+                warn_span!(target: "rocket::support", "missing_secret_key", "secrets enabled without a stable `secret_key`").in_scope(|| {
+                    info!(target: "rocket::support", "disable `secrets` feature or configure a `secret_key`");
+                    info!(target: "rocket::support", "this becomes an {} in non-debug profiles", Paint::red("error"));
+                });
             }
         }
 
-        launch_info_!("temp dir: {}", Paint::default(&self.temp_dir.display()).bold());
-        launch_info_!("log level: {}", Paint::default(self.log_level).bold());
-        launch_info_!("cli colors: {}", Paint::default(&self.cli_colors).bold());
+        info!(target: "rocket::support", temp_dir = %self.temp_dir.display());
+        info!(target: "rocket::support", log_level = %self.log_level);
+        info!(target: "rocket::support", cli_colors = %&self.cli_colors);
 
         // Check for now depreacted config values.
         for (key, replacement) in Self::DEPRECATED_KEYS {
             if let Some(md) = figment.find_metadata(key) {
-                warn!("found value for deprecated config key `{}`", Paint::white(key));
+                let span = warn_span!(target: "rocket::support", "deprecated_key", "found value for deprecated config key `{}`", Paint::white(key));
+                let _e = span.enter();
                 if let Some(ref source) = md.source {
-                    launch_info_!("in {} {}", Paint::white(source), md.name);
+                    info!(target: "rocket::support", "in {} {}", Paint::white(source), md.name);
                 }
 
                 if let Some(new_key) = replacement {
-                    launch_info_!("key has been by replaced by `{}`", Paint::white(new_key));
+                    info!(target: "rocket::support", "key has been by replaced by `{}`", Paint::white(new_key));
                 }
             }
         }
@@ -336,12 +339,12 @@ impl Config {
         // Check for now removed config values.
         for (prefix, replacement) in Self::DEPRECATED_PROFILES {
             if let Some(profile) = figment.profiles().find(|p| p.starts_with(prefix)) {
-                warn!("found set deprecated profile `{}`", Paint::white(profile));
-
+                let span = warn_span!(target: "rocket::support", "deprecated_profile", "found set deprecated profile `{}`", Paint::white(profile));
+                let _e = span.enter();
                 if let Some(new_profile) = replacement {
-                    launch_info_!("profile has been by replaced by `{}`", Paint::white(new_profile));
+                    info!(target: "rocket::support", "profile has been by replaced by `{}`", Paint::white(new_profile));
                 } else {
-                    launch_info_!("profile `{}` has no special meaning", profile);
+                    info!(target: "rocket::support", "profile `{}` has no special meaning", profile);
                 }
             }
         }
@@ -443,61 +446,63 @@ pub fn pretty_print_error(error: figment::Error) {
 
     let mut config = Config::debug_default();
     config.log_level = LogLevel::Debug;
-    crate::logger::init(&config);
+    crate::trace::try_init(&config);
 
     error!("Rocket configuration extraction from provider failed.");
     for e in error {
         fn w<T: std::fmt::Display>(v: T) -> Paint<T> { Paint::white(v) }
 
-        match e.kind {
-            Kind::Message(msg) => error_!("{}", msg),
+        let span = match &e.kind {
+            Kind::Message(msg) => error_span!("config_error", "{}", msg),
             Kind::InvalidType(v, exp) => {
-                error_!("invalid type: found {}, expected {}", w(v), w(exp));
+                error_span!("config_error", "invalid type: found {}, expected {}", w(v), w(exp))
             }
             Kind::InvalidValue(v, exp) => {
-                error_!("invalid value {}, expected {}", w(v), w(exp));
+                error_span!("config_error", "invalid value {}, expected {}", w(v), w(exp))
             },
             Kind::InvalidLength(v, exp) => {
-                error_!("invalid length {}, expected {}", w(v), w(exp))
+                error_span!("config_error", "invalid length {}, expected {}", w(v), w(exp))
             },
             Kind::UnknownVariant(v, exp) => {
-                error_!("unknown variant: found `{}`, expected `{}`", w(v), w(OneOf(exp)))
+                error_span!("config_error", "unknown variant: found `{}`, expected `{}`", w(v), w(OneOf(exp)))
             }
             Kind::UnknownField(v, exp) => {
-                error_!("unknown field: found `{}`, expected `{}`", w(v), w(OneOf(exp)))
+                error_span!("config_error", "unknown field: found `{}`, expected `{}`", w(v), w(OneOf(exp)))
             }
             Kind::MissingField(v) => {
-                error_!("missing field `{}`", w(v))
+                error_span!("config_error", "missing field `{}`", w(v))
             }
             Kind::DuplicateField(v) => {
-                error_!("duplicate field `{}`", w(v))
+                error_span!("config_error", "duplicate field `{}`", w(v))
             }
             Kind::ISizeOutOfRange(v) => {
-                error_!("signed integer `{}` is out of range", w(v))
+                error_span!("config_error", "signed integer `{}` is out of range", w(v))
             }
             Kind::USizeOutOfRange(v) => {
-                error_!("unsigned integer `{}` is out of range", w(v))
+                error_span!("config_error", "unsigned integer `{}` is out of range", w(v))
             }
             Kind::Unsupported(v) => {
-                error_!("unsupported type `{}`", w(v))
+                error_span!("config_error", "unsupported type `{}`", w(v))
             }
             Kind::UnsupportedKey(a, e) => {
-                error_!("unsupported type `{}` for key: must be `{}`", w(a), w(e))
+                error_span!("config_error", "unsupported type `{}` for key: must be `{}`", w(a), w(e))
             }
-        }
+        };
+
+        let _e = span.enter();
 
         if let (Some(ref profile), Some(ref md)) = (&e.profile, &e.metadata) {
             if !e.path.is_empty() {
                 let key = md.interpolate(profile, &e.path);
-                info_!("for key {}", w(key));
+                info!(key = %w(&key));
             }
         }
 
         if let Some(md) = e.metadata {
             if let Some(source) = md.source {
-                info_!("in {} {}", w(source), md.name);
+                info!("in {} {}", w(&source), &md.name);
             } else {
-                info_!("in {}", w(md.name));
+                info!("in {}", w(&md.name));
             }
         }
     }

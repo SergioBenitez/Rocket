@@ -4,6 +4,7 @@ use std::sync::Arc;
 use rocket::{Rocket, Phase};
 use rocket::fairing::{AdHoc, Fairing};
 use rocket::request::{Request, Outcome, FromRequest};
+use rocket::trace::error;
 use rocket::outcome::IntoOutcome;
 use rocket::http::Status;
 
@@ -62,8 +63,8 @@ async fn run_blocking<F, R>(job: F) -> R
 
 macro_rules! dberr {
     ($msg:literal, $db_name:expr, $efmt:literal, $error:expr, $rocket:expr) => ({
-        rocket::error!(concat!("database ", $msg, " error for pool named `{}`"), $db_name);
-        error_!($efmt, $error);
+        error!(concat!("database ", $msg, " error for pool named `{}`"), $db_name);
+        error!($efmt, $error);
         return Err($rocket);
     });
 }
@@ -96,7 +97,7 @@ impl<K: 'static, C: Poolable> ConnectionPool<K, C> {
         let permit = match timeout(duration, self.semaphore.clone().acquire_owned()).await {
             Ok(p) => p.expect("internal invariant broken: semaphore should not be closed"),
             Err(_) => {
-                error_!("database connection retrieval timed out");
+                error!("database connection retrieval timed out");
                 return Err(());
             }
         };
@@ -111,7 +112,7 @@ impl<K: 'static, C: Poolable> ConnectionPool<K, C> {
                 _marker: PhantomData,
             }),
             Err(e) => {
-                error_!("failed to get a database connection: {}", e);
+                error!("failed to get a database connection: {}", e);
                 Err(())
             }
         }
@@ -123,12 +124,12 @@ impl<K: 'static, C: Poolable> ConnectionPool<K, C> {
             Some(pool) => match pool.get().await.ok() {
                 Some(conn) => Some(conn),
                 None => {
-                    error_!("no connections available for `{}`", std::any::type_name::<K>());
+                    error!("no connections available for `{}`", std::any::type_name::<K>());
                     None
                 }
             },
             None => {
-                error_!("missing database fairing for `{}`", std::any::type_name::<K>());
+                error!("missing database fairing for `{}`", std::any::type_name::<K>());
                 None
             }
         }
@@ -190,7 +191,7 @@ impl<'r, K: 'static, C: Poolable> FromRequest<'r> for Connection<K, C> {
         match request.rocket().state::<ConnectionPool<K, C>>() {
             Some(c) => c.get().await.into_outcome(Status::ServiceUnavailable),
             None => {
-                error_!("Missing database fairing for `{}`", std::any::type_name::<K>());
+                error!("Missing database fairing for `{}`", std::any::type_name::<K>());
                 Outcome::Failure((Status::InternalServerError, ()))
             }
         }

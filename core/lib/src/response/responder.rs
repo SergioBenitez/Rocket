@@ -277,7 +277,7 @@ impl<'r, 'o: 'r, R: Responder<'r, 'o>> Responder<'r, 'o> for Option<R> {
         match self {
             Some(r) => r.respond_to(req),
             None => {
-                warn_!("Response was `None`.");
+                warn!("Response was `None`.");
                 Err(Status::NotFound)
             },
         }
@@ -335,7 +335,7 @@ impl<'r> Responder<'r, 'static> for Status {
                 Response::build().status(self).ok()
             }
             _ => {
-                error_!("Invalid status used as responder: {}.", self);
+                error!("Invalid status used as responder: {}.", self);
                 Err(Status::InternalServerError)
             }
         }

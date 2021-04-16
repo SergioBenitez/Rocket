@@ -16,7 +16,7 @@ use crate::phase::{Stateful, StateRef, State};
 use crate::http::uri::{self, Origin};
 use crate::http::ext::IntoOwned;
 use crate::error::{Error, ErrorKind};
-use crate::logger::PaintExt;
+use crate::trace::PaintExt;
 
 /// The application server itself.
 ///
@@ -215,9 +215,10 @@ impl Rocket<Build> {
     {
         let mut base = base.clone().try_into()
             .map(|origin| origin.into_owned())
-            .unwrap_or_else(|e| {
-                error!("invalid {} base: {}", kind, Paint::white(&base));
-                error_!("{}", e);
+            .unwrap_or_else(|error| {
+                let span = error_span!("invalid_base", base = %Paint::white(&base), "invalid {} base", kind);
+                let _e = span.enter();
+                error!(%error);
                 panic!("aborting due to {} base error", kind);
             });
 
@@ -228,9 +229,10 @@ impl Rocket<Build> {
 
         for unmounted_item in items {
             let item = m(&base, unmounted_item.clone())
-                .unwrap_or_else(|e| {
-                    error!("malformed URI in {} {}", kind, unmounted_item);
-                    error_!("{}", e);
+                .unwrap_or_else(|error| {
+                    let span = error_span!("malformed_item", %unmounted_item, "malformed URI in {}", kind);
+                    let _e = span.enter();
+                    error!(%error);
                     panic!("aborting due to invalid {} URI", kind);
                 });
 
@@ -462,14 +464,14 @@ impl Rocket<Build> {
     pub async fn ignite(mut self) -> Result<Rocket<Ignite>, Error> {
         // We initialize the logger here so that logging from fairings are
         // visible but change the max-log-level when we have a final config.
-        crate::logger::init(&Config::debug_default());
+        crate::trace::try_init(&Config::debug_default());
         self = Fairings::handle_ignite(self).await;
         self.fairings.audit().map_err(|f| ErrorKind::FailedFairings(f.to_vec()))?;
 
         // Extract the configuration; initialize the logger.
         #[allow(unused_mut)]
         let mut config = self.figment.extract::<Config>().map_err(ErrorKind::Config)?;
-        crate::logger::init(&config);
+        crate::trace::try_init(&config);
 
         // Check for safely configured secrets.
         #[cfg(feature = "secrets")]
@@ -518,14 +520,14 @@ fn log_items<T, I, B, O>(e: &str, t: &str, items: I, base: B, origin: O)
 {
     let mut items: Vec<_> = items.collect();
     if !items.is_empty() {
-        launch_info!("{}{}:", Paint::emoji(e), Paint::magenta(t));
+        info!(target: "rocket::support", "{}{}:", Paint::emoji(e), Paint::magenta(t));
     }
 
     items.sort_by_key(|i| origin(i).path().as_str().chars().count());
     items.sort_by_key(|i| origin(i).path_segments().len());
     items.sort_by_key(|i| base(i).path().as_str().chars().count());
     items.sort_by_key(|i| base(i).path_segments().len());
-    items.iter().for_each(|i| launch_info_!("{}", i));
+    items.iter().for_each(|i| info!(target: "rocket::support", "{}", i));
 }
 
 impl Rocket<Ignite> {
@@ -600,7 +602,7 @@ impl Rocket<Ignite> {
     async fn _local_launch(self) -> Rocket<Orbit> {
         let rocket = self.into_orbit();
         rocket.fairings.handle_liftoff(&rocket).await;
-        launch_info!("{}{}", Paint::emoji("🚀 "),
+        info!(target: "rocket::support", "{}{}", Paint::emoji("🚀 "),
             Paint::default("Rocket has launched into local orbit").bold());
 
         rocket
@@ -612,10 +614,10 @@ impl Rocket<Ignite> {
 
             let proto = rkt.config.tls_enabled().then(|| "https").unwrap_or("http");
             let addr = format!("{}://{}:{}", proto, rkt.config.address, rkt.config.port);
-            launch_info!("{}{} {}",
+            info!(target: "rocket::support", "{}{} {}",
                 Paint::emoji("🚀 "),
                 Paint::default("Rocket has launched from").bold(),
-                Paint::default(addr).bold().underline());
+                Paint::default(&addr).bold().underline());
         })).await
     }
 }

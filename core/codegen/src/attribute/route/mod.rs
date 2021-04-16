@@ -29,7 +29,7 @@ fn query_decls(route: &Route) -> Option<TokenStream> {
     }
 
     define_spanned_export!(Span::call_site() =>
-        __req, __data, _log, _form, Outcome, _Ok, _Err, _Some, _None
+        __req, __data, _trace, _form, Outcome, _Ok, _Err, _Some, _None
     );
 
     // Record all of the static parameters for later filtering.
@@ -92,8 +92,11 @@ fn query_decls(route: &Route) -> Option<TokenStream> {
         )*
 
         if !_e.is_empty() {
-            #_log::warn_("query string failed to match declared route");
-            for _err in _e { #_log::warn_(_err); }
+            #_trace::warn_span!("mismatch_query_string",
+                "query string failed to match declared route"
+            ).in_scope(|| {
+                for _err in _e { #_trace::warn!("{}", _err); }
+            });
             return #Outcome::Forward(#__data);
         }
 
@@ -116,15 +119,15 @@ fn request_guard_decl(guard: &Guard) -> TokenStream {
 fn param_guard_decl(guard: &Guard) -> TokenStream {
     let (i, name, ty) = (guard.index, &guard.name, &guard.ty);
     define_spanned_export!(ty.span() =>
-        __req, __data, _log, _None, _Some, _Ok, _Err,
+        __req, __data, _trace, _None, _Some, _Ok, _Err,
         Outcome, FromSegments, FromParam
     );
 
     // Returned when a dynamic parameter fails to parse.
-    let parse_error = quote!({
-        #_log::warn_(&format!("Failed to parse '{}': {:?}", #name, __error));
+    let parse_error = quote_spanned! { ty.span() => {
+        #_trace::warn!(parameter = #name, error = ?__error, "Failed to parse dynamic parameter");
         #Outcome::Forward(#__data)
-    });
+    } };
 
     // All dynamic parameters should be found if this function is being called;
     // that's the point of statically checking the URI parameters.
@@ -136,8 +139,8 @@ fn param_guard_decl(guard: &Guard) -> TokenStream {
                     #_Err(__error) => return #parse_error,
                 },
                 #_None => {
-                    #_log::error("Internal invariant: dynamic parameter not found.");
-                    #_log::error("Please report this error to the Rocket issue tracker.");
+                    #_trace::error!("Internal invariant: dynamic parameter not found.");
+                    #_trace::error!("Please report this error to the Rocket issue tracker.");
                     return #Outcome::Forward(#__data);
                 }
             }
@@ -265,6 +268,7 @@ fn codegen_route(route: Route) -> Result<TokenStream> {
                     #__req: &'_b #Request<'_>,
                     #__data: #Data
                 ) -> #_route::BoxFuture<'_b> {
+                    use #_trace::Instrument as _;
                     #_Box::pin(async move {
                         #(#request_guards)*
                         #(#param_guards)*
@@ -272,7 +276,12 @@ fn codegen_route(route: Route) -> Result<TokenStream> {
                         #data_guard
 
                         #responder_outcome
-                    })
+                    }.instrument(#_trace::info_span!(
+                        stringify!(#handler_fn_name),
+                        method = %#method,
+                        path = #path,
+                        "Route: {}", stringify!(#handler_fn_name)
+                    )))
                 }
 
                 #_route::StaticInfo {

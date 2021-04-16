@@ -1,0 +1,11 @@
+[package]
+name = "trace_subscriber"
+version = "0.0.0"
+workspace = "../"
+edition = "2018"
+publish = false
+
+[dependencies]
+rocket = { path = "../../core/lib" }
+tracing-subscriber = "0.2.15"
+tracing = "0.1"

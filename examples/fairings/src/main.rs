@@ -7,6 +7,7 @@ use std::sync::Arc;
 use rocket::{Rocket, Request, State, Data, Build};
 use rocket::fairing::{self, AdHoc, Fairing, Info, Kind};
 use rocket::http::Method;
+use rocket::trace::info;
 
 struct Token(i64);
 
@@ -74,9 +75,9 @@ fn rocket() -> _ {
         })))
         .attach(AdHoc::on_request("PUT Rewriter", |req, _| {
             Box::pin(async move {
-                println!("    => Incoming request: {}", req);
+                info!("Incoming request: {}", req);
                 if req.uri().path() == "/" {
-                    println!("    => Changing method to `PUT`.");
+                    info!("Changing method to `PUT`.");
                     req.set_method(Method::Put);
                 }
             })
@@ -84,7 +85,7 @@ fn rocket() -> _ {
         .attach(AdHoc::on_response("Response Rewriter", |req, res| {
             Box::pin(async move {
                 if req.uri().path() == "/" {
-                    println!("    => Rewriting response body.");
+                    info!("Rewriting response body.");
                     res.set_sized_body(None, Cursor::new("Hello, fairings!"));
                 }
             })

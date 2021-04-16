@@ -1,0 +1,4 @@
+[debug]
+# Disable CLI colors and emoji when using `env_logger`; it doesn't format them
+# as nicely as Rocket does.
+cli_colors = false
