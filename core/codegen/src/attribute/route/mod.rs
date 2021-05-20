@@ -319,6 +319,9 @@ fn codegen_route(route: Route) -> Result<TokenStream> {
     let rank = Optional(route.attr.rank);
     let format = Optional(route.attr.format.as_ref());
 
+    // Get the doc comment
+    let docstring = &route.docstring;
+
     Ok(quote! {
         #handler_fn
 
@@ -353,6 +356,7 @@ fn codegen_route(route: Route) -> Result<TokenStream> {
                     format: #format,
                     rank: #rank,
                     sentinels: #sentinels,
+                    docstring: #docstring,
                 }
             }
 

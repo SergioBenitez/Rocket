@@ -29,6 +29,8 @@ pub struct Route {
     pub handler: syn::ItemFn,
     /// The parsed arguments to the user's function.
     pub arguments: Arguments,
+    /// The doc comment describing this route
+    pub docstring: String,
 }
 
 type ArgumentMap = IndexMap<Name, (syn::Ident, syn::Type)>;
@@ -209,9 +211,11 @@ impl Route {
             })
             .collect();
 
+        let docstring = String::from_attrs("doc", &handler.attrs)?.join("\n");
+
         diags.head_err_or(Route {
             attr, path_params, query_params, data_guard, request_guards,
-            handler, arguments,
+            handler, arguments, docstring
         })
     }
 }
