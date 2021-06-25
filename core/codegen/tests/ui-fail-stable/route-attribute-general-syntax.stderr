@@ -167,36 +167,36 @@ error: invalid or unknown media type
 90 | #[get("/", format = "text//foo")]
    |                     ^^^^^^^^^^^
 
-error: invalid HTTP method for route handlers
-  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`
+error: Invalid Method
+  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`
   --> $DIR/route-attribute-general-syntax.rs:95:9
    |
 95 | #[route(CONNECT, "/")]
    |         ^^^^^^^
 
-error: invalid HTTP method
-  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`
+error: Invalid Method
+  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`
   --> $DIR/route-attribute-general-syntax.rs:98:9
    |
 98 | #[route(FIX, "/")]
    |         ^^^
 
 error: expected identifier, found string literal
-  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`
+  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`
    --> $DIR/route-attribute-general-syntax.rs:101:9
     |
 101 | #[route("hi", "/")]
     |         ^^^^
 
 error: expected identifier, found string literal
-  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`
+  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`
    --> $DIR/route-attribute-general-syntax.rs:104:9
     |
 104 | #[route("GET", "/")]
     |         ^^^^^
 
 error: expected identifier, found integer literal
-  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`
+  --- help: method must be one of: `GET`, `PUT`, `POST`, `DELETE`, `HEAD`, `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`
    --> $DIR/route-attribute-general-syntax.rs:107:9
     |
 107 | #[route(120, "/")]

@@ -57,6 +57,7 @@ async-stream = "0.3.2"
 multer = { version = "2", features = ["tokio-io"] }
 tokio-stream = { version = "0.1.6", features = ["signal", "time"] }
 state = "0.5.1"
+websocket-codec = "0.5.0"
 
 [dependencies.rocket_codegen]
 version = "0.5.0-rc.1"

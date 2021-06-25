@@ -1,3 +1,4 @@
+
 use quote::ToTokens;
 use devise::{FromMeta, MetaItem, Result, ext::{Split2, PathExt, SpanDiagnosticExt}};
 use proc_macro2::{TokenStream, Span};
@@ -15,6 +16,14 @@ pub struct MediaType(pub http::MediaType);
 
 #[derive(Debug, Copy, Clone)]
 pub struct Method(pub http::Method);
+
+#[derive(Debug, Copy, Clone)]
+pub enum WebSocketEvent {
+    Http(Method),
+    WebSocketJoin,
+    WebSocketMessage,
+    WebSocketLeave,
+}
 
 #[derive(Clone, Debug)]
 pub struct Optional<T>(pub Option<T>);
@@ -97,7 +106,7 @@ impl ToTokens for MediaType {
 }
 
 const VALID_METHODS_STR: &str = "`GET`, `PUT`, `POST`, `DELETE`, `HEAD`, \
-    `PATCH`, `OPTIONS`";
+    `PATCH`, `OPTIONS`, `JOIN`, `MESSAGE`, `LEAVE`";
 
 const VALID_METHODS: &[http::Method] = &[
     http::Method::Get, http::Method::Put, http::Method::Post,
@@ -129,6 +138,41 @@ impl FromMeta for Method {
     }
 }
 
+impl FromMeta for WebSocketEvent {
+    fn from_meta(meta: &MetaItem) -> Result<Self> {
+        let span = meta.value_span();
+        let help_text = format!("method must be one of: {}", VALID_METHODS_STR);
+        if let Ok(m) = Method::from_meta(meta) {
+            Ok(Self::from(m))
+        } else {
+            if let MetaItem::Path(path) = meta {
+                if let Some(ident) = path.last_ident() {
+                    return match ident.to_string().to_uppercase().as_str() {
+                        "JOIN" => Ok(Self::WebSocketJoin),
+                        "MESSAGE" => Ok(Self::WebSocketMessage),
+                        "LEAVE" => Ok(Self::WebSocketLeave),
+                        _ => Err(span.error("Invalid Method").help(&*help_text)),
+                    };
+                }
+            }
+            Err(span.error(format!("expected identifier, found {}", meta.description()))
+                    .help(&*help_text))
+        }
+    }
+}
+
+impl From<Method> for WebSocketEvent {
+    fn from(m: Method) -> Self {
+        Self::Http(m)
+    }
+}
+
+impl From<http::Method> for WebSocketEvent {
+    fn from(m: http::Method) -> Self {
+        Self::Http(Method(m))
+    }
+}
+
 impl ToTokens for Method {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let method_tokens = match self.0 {
@@ -144,6 +188,50 @@ impl ToTokens for Method {
         };
 
         tokens.extend(method_tokens);
+    }
+}
+
+impl ToTokens for WebSocketEvent {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let method_tokens = match self {
+            Self::Http(_) => quote!(::rocket::route::WebSocketEvent::None),
+            Self::WebSocketJoin => quote!(::rocket::route::WebSocketEvent::Join),
+            Self::WebSocketMessage => quote!(::rocket::route::WebSocketEvent::Message),
+            Self::WebSocketLeave => quote!(::rocket::route::WebSocketEvent::Leave),
+        };
+
+        tokens.extend(method_tokens);
+    }
+}
+
+impl WebSocketEvent {
+    pub fn http_method(self) -> Method {
+        match self {
+            Self::Http(m) => m,
+            _ => Method(http::Method::Get),
+        }
+    }
+
+    pub fn supports_payload(&self) -> bool {
+        match self {
+            Self::Http(m) => m.0.supports_payload(),
+            _ => true,
+        }
+    }
+
+    pub fn is_websocket(&self) -> bool {
+        !matches!(self, Self::Http(_))
+    }
+}
+
+impl std::fmt::Display for WebSocketEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Http(m) => write!(f, "{}", m.0),
+            Self::WebSocketJoin => write!(f, "Join"),
+            Self::WebSocketMessage => write!(f, "Message"),
+            Self::WebSocketLeave => write!(f, "Leave"),
+        }
     }
 }
 

@@ -41,18 +41,25 @@ pub struct Data<'r> {
     buffer: Vec<u8>,
     is_complete: bool,
     stream: StreamReader<'r>,
+    ws_binary: Option<bool>,
 }
 
 impl<'r> Data<'r> {
     /// Create a `Data` from a recognized `stream`.
     pub(crate) fn from<S: Into<StreamReader<'r>>>(stream: S) -> Data<'r> {
+        Self::from_ws(stream, None)
+    }
+
+    pub(crate) fn from_ws<S>(stream: S, ws_binary: Option<bool>) -> Data<'r>
+        where S: Into<StreamReader<'r>>
+    {
         // TODO.async: This used to also set the read timeout to 5 seconds.
         // Such a short read timeout is likely no longer necessary, but some
         // kind of idle timeout should be implemented.
 
         let stream = stream.into();
         let buffer = Vec::with_capacity(PEEK_BYTES / 8);
-        Data { buffer, stream, is_complete: false }
+        Data { buffer, stream, is_complete: false, ws_binary }
     }
 
     /// This creates a `data` object from a local data source `data`.
@@ -62,6 +69,7 @@ impl<'r> Data<'r> {
             buffer: data,
             stream: StreamReader::empty(),
             is_complete: true,
+            ws_binary: None,
         }
     }
 
@@ -185,5 +193,21 @@ impl<'r> Data<'r> {
     #[inline(always)]
     pub fn peek_complete(&self) -> bool {
         self.is_complete
+    }
+
+    /// Returns an indication if this data came from a websocket, and whether it was marked as text
+    /// or binary.
+    ///
+    /// This function should only be used to copy the marking when echoing the message back to the
+    /// client.
+    pub(crate) fn was_ws_binary(&self) -> Option<bool> {
+        self.ws_binary
+    }
+
+    /// Removes the first `len` items from this data
+    pub(crate) async fn take_start(&mut self, len: usize) {
+        let len = self.peek(len).await.len();
+        // This just drops the elements
+        self.buffer.drain(..len);
     }
 }

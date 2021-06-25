@@ -8,7 +8,7 @@ mod from_request;
 mod tests;
 
 pub use self::request::Request;
-pub use self::from_request::{FromRequest, Outcome};
+pub use self::from_request::{FromRequest, Outcome, FromWebSocket, WsOutcome};
 pub use self::from_param::{FromParam, FromSegments};
 
 #[doc(inline)]

@@ -1,0 +1,50 @@
+name: Autobahn
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Start Server
+        run: |
+          cd $GITHUB_WORKSPACE/examples/websocket-echo/
+          cargo build
+          ROCKET_ADDRESS=0.0.0.0 cargo run &
+        shell: bash
+
+      - name: Install Autobahn|Testsuite
+        run: docker pull crossbario/autobahn-testsuite:0.8.2
+
+      - name: Wait for Server
+        run: until nc localhost 8000 -w 0; do sleep 1; done
+
+      - name: Run Autobahn|Testsuite
+        run: |
+          docker run --add-host localhost:$(ip addr show docker0 | grep -Po 'inet \K[\d.]+') \
+          -v ${{ github.workspace }}/.github/autobahn:/config \
+          -v ${{ runner.temp }}:/reports \
+          crossbario/autobahn-testsuite:0.8.2 \
+          wstest -m fuzzingclient -s /config/fuzzingclient.json
+        shell: bash
+
+      - name: Check Test Output
+        run: |
+          cd ${{ runner.temp }}/servers
+          for file in *.json; do
+            if [[ $file != "index.json" ]]; then
+              echo $file
+              [[ $(jq ".behavior" $file) != "\"FAILED\"" ]]
+            fi
+          done

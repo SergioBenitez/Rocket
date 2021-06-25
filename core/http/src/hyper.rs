@@ -9,6 +9,7 @@
 #[doc(hidden)] pub use hyper::rt::Executor;
 #[doc(hidden)] pub use hyper::server::Server;
 #[doc(hidden)] pub use hyper::service::{make_service_fn, service_fn, Service};
+#[doc(hidden)] pub use hyper::upgrade;
 
 #[doc(hidden)] pub use http::header::HeaderMap;
 #[doc(hidden)] pub use http::header::HeaderName as HeaderName;

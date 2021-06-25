@@ -61,6 +61,15 @@ fn formats_collide(route: &Route, other: &Route) -> bool {
     }
 }
 
+fn websockets_collide(route: &Route, other: &Route) -> bool {
+    if route.websocket_handler.is_none() || other.websocket_handler.is_none() {
+        // If one of them is not a websocket route, we just check if they have the same http rank
+        route.http_rank() == other.http_rank()
+    } else {
+        route.websocket_handler.collides(&other.websocket_handler)
+    }
+}
+
 impl Collide for Route {
     /// Determines if two routes can match against some request. That is, if two
     /// routes `collide`, there exists a request that can match against both
@@ -79,6 +88,7 @@ impl Collide for Route {
             && self.rank == other.rank
             && paths_collide(self, other)
             && formats_collide(self, other)
+            && websockets_collide(self, other)
     }
 }
 
@@ -175,7 +185,6 @@ fn formats_match(route: &Route, request: &Request<'_>) -> bool {
         }
     }
 }
-
 
 impl Collide for Catcher {
     /// Determines if two catchers are in conflict: there exists a request for

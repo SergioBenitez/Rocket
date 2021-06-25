@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::net::{IpAddr, SocketAddr};
 
+use crate::websocket::{WebSocket, WebSocketStatus};
 use crate::{Request, Route};
 use crate::outcome::{self, IntoOutcome};
 use crate::outcome::Outcome::*;
@@ -492,5 +493,49 @@ impl<'r, T: FromRequest<'r>> FromRequest<'r> for Option<T> {
             Success(val) => Success(Some(val)),
             Failure(_) | Forward(_) => Success(None),
         }
+    }
+}
+
+/// Type alias for the `Outcome` of a `FromRequest` conversion.
+pub type WsOutcome<S, E> = outcome::Outcome<S, (WebSocketStatus<'static>, E), ()>;
+
+impl<S, E> From<Outcome<S, E>> for WsOutcome<S, E> {
+    fn from(o: Outcome<S, E>) -> Self {
+        match o {
+            Outcome::Success(s) => Self::Success(s),
+            Outcome::Failure((s, e)) => Self::Failure((s.into(), e)),
+            Outcome::Forward(()) => Self::Forward(()),
+        }
+    }
+}
+
+/// Similar to [`FromRequest`], but specifically from a websocket connection
+#[crate::async_trait]
+pub trait FromWebSocket<'r>: Sized {
+    /// The associated error to be returned if derivation fails.
+    type Error: Debug;
+
+    /// Derives an instance of `Self` from the incoming request metadata.
+    ///
+    /// If the derivation is successful, an outcome of `Success` is returned. If
+    /// the derivation fails in an unrecoverable fashion, `Failure` is returned.
+    /// `Forward` is returned to indicate that the request should be forwarded
+    /// to other matching routes, if any.
+    async fn from_websocket(request: &'r WebSocket<'_>) -> WsOutcome<Self, Self::Error>;
+}
+
+#[crate::async_trait]
+impl<'r, T: FromRequest<'r>> FromWebSocket<'r> for T {
+    /// The associated error to be returned if derivation fails.
+    type Error = <T as FromRequest<'r>>::Error;
+
+    /// Derives an instance of `Self` from the incoming request metadata.
+    ///
+    /// If the derivation is successful, an outcome of `Success` is returned. If
+    /// the derivation fails in an unrecoverable fashion, `Failure` is returned.
+    /// `Forward` is returned to indicate that the request should be forwarded
+    /// to other matching routes, if any.
+    async fn from_websocket(request: &'r WebSocket<'_>) -> WsOutcome<Self, Self::Error> {
+        <T as FromRequest<'r>>::from_request(request.request()).await.into()
     }
 }

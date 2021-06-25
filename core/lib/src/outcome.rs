@@ -89,7 +89,10 @@
 
 use std::fmt;
 
+use rocket_http::Status;
 use yansi::{Paint, Color};
+
+use crate::websocket::WebSocketStatus;
 
 use self::Outcome::*;
 
@@ -766,5 +769,15 @@ impl<S, E, F> fmt::Display for Outcome<S, E, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (color, string) = self.formatting();
         write!(f, "{}", Paint::default(string).fg(color))
+    }
+}
+
+impl<S, F> From<Outcome<S, Status, F>> for Outcome<S, WebSocketStatus<'static>, F> {
+    fn from(o: Outcome<S, Status, F>) -> Self {
+        match o {
+            Outcome::Success(s) => Self::Success(s),
+            Outcome::Failure(s) => Self::Failure(s.into()),
+            Outcome::Forward(s) => Self::Forward(s),
+        }
     }
 }

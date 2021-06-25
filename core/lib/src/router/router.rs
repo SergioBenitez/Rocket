@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::request::Request;
 use crate::http::{Method, Status};
 
+use crate::websocket::WebSocketEvent;
 use crate::{Route, Catcher};
 use crate::router::Collide;
 
@@ -10,12 +11,14 @@ use crate::router::Collide;
 pub(crate) struct Router {
     routes: HashMap<Method, Vec<Route>>,
     catchers: HashMap<Option<u16>, Vec<Catcher>>,
+    websocket: HashMap<WebSocketEvent, Vec<Route>>,
 }
 
 #[derive(Debug)]
 pub struct Collisions {
     pub routes: Vec<(Route, Route)>,
     pub catchers: Vec<(Catcher, Catcher)>,
+    pub websocket: Vec<(Route, Route)>,
 }
 
 impl Router {
@@ -24,9 +27,15 @@ impl Router {
     }
 
     pub fn add_route(&mut self, route: Route) {
+        if let Some(event) = WebSocketEvent::from_handler(&route.websocket_handler) {
+            let routes = self.websocket.entry(event).or_default();
+            routes.push(route.clone());
+            routes.sort_by_key(|r| r.websocket_rank());
+        }
+
         let routes = self.routes.entry(route.method).or_default();
         routes.push(route);
-        routes.sort_by_key(|r| r.rank);
+        routes.sort_by_key(|r| r.http_rank());
     }
 
     pub fn add_catcher(&mut self, catcher: Catcher) {
@@ -45,6 +54,11 @@ impl Router {
         self.catchers.values().flat_map(|v| v.iter())
     }
 
+    #[inline]
+    pub fn websocket_events(&self) -> impl Iterator<Item = &Route> + Clone {
+        self.websocket.values().flat_map(|v| v.iter())
+    }
+
     pub fn route<'r, 'a: 'r>(
         &'a self,
         req: &'r Request<'r>
@@ -53,6 +67,17 @@ impl Router {
         self.routes.get(&req.method())
             .into_iter()
             .flat_map(move |routes| routes.iter().filter(move |r| r.matches(req)))
+    }
+
+    pub fn route_event<'r, 'a: 'r>(
+        &'a self,
+        //req: &'r Request<'r>,
+        event: WebSocketEvent,
+    ) -> impl Iterator<Item = &'a Route> + 'r {
+        // Note that routes are presorted by ascending rank on each `add`.
+        self.websocket.get(&event)
+            .into_iter()
+            .flat_map(move |routes| routes)
     }
 
     // For many catchers, using aho-corasick or similar should be much faster.
@@ -92,9 +117,10 @@ impl Router {
     pub fn finalize(&self) -> Result<(), Collisions> {
         let routes: Vec<_> = self.collisions(self.routes()).collect();
         let catchers: Vec<_> = self.collisions(self.catchers()).collect();
+        let websocket: Vec<_> = self.collisions(self.websocket_events()).collect();
 
         if !routes.is_empty() || !catchers.is_empty() {
-            return Err(Collisions { routes, catchers })
+            return Err(Collisions { routes, catchers, websocket })
         }
 
         Ok(())

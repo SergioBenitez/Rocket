@@ -68,7 +68,7 @@ mod http_codegen;
 mod syn_ext;
 mod name;
 
-use crate::http::Method;
+use crate::{http::Method, http_codegen::WebSocketEvent};
 use proc_macro::TokenStream;
 
 static URI_MACRO_PREFIX: &str = "rocket_uri_macro_";
@@ -93,7 +93,7 @@ macro_rules! emit {
 }
 
 macro_rules! route_attribute {
-    ($name:ident => $method:expr) => (
+    ($name:ident => $method:expr $(, $t1:ty, $t2:ty)?) => (
         /// Attribute to generate a [`Route`] and associated metadata.
         ///
         /// This and all other route attributes can only be applied to free
@@ -274,12 +274,12 @@ macro_rules! route_attribute {
         /// [`FromRequest` Outcomes]: ../rocket/request/trait.FromRequest.html#outcomes
         #[proc_macro_attribute]
         pub fn $name(args: TokenStream, input: TokenStream) -> TokenStream {
-            emit!(attribute::route::route_attribute($method, args, input))
+            emit!(attribute::route::route_attribute$(::<$t1, $t2>)?($method, args, input))
         }
     )
 }
 
-route_attribute!(route => None);
+route_attribute!(route => None, Option<WebSocketEvent>, WebSocketEvent);
 route_attribute!(get => Method::Get);
 route_attribute!(put => Method::Put);
 route_attribute!(post => Method::Post);
@@ -287,6 +287,10 @@ route_attribute!(delete => Method::Delete);
 route_attribute!(head => Method::Head);
 route_attribute!(patch => Method::Patch);
 route_attribute!(options => Method::Options);
+
+route_attribute!(join => WebSocketEvent::WebSocketJoin);
+route_attribute!(message => WebSocketEvent::WebSocketMessage);
+route_attribute!(leave => WebSocketEvent::WebSocketLeave);
 
 /// Attribute to generate a [`Catcher`] and associated metadata.
 ///

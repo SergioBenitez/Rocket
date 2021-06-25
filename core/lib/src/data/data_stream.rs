@@ -7,10 +7,12 @@ use tokio::fs::File;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, ReadBuf, Take};
 use futures::stream::Stream;
 use futures::ready;
+use tokio::sync::mpsc;
 
 use crate::http::hyper;
 use crate::ext::{PollExt, Chain};
 use crate::data::{Capped, N};
+use crate::websocket::message::WebSocketMessage;
 
 /// Raw data stream of a request body.
 ///
@@ -60,7 +62,8 @@ enum State {
 enum StreamKind<'r> {
     Empty,
     Body(&'r mut hyper::Body),
-    Multipart(multer::Field<'r>)
+    Multipart(multer::Field<'r>),
+    WebSocket(mpsc::Receiver<hyper::Bytes>),
 }
 
 impl<'r> DataStream<'r> {
@@ -245,6 +248,12 @@ impl<'r> From<multer::Field<'r>> for StreamReader<'r> {
     }
 }
 
+impl<'r> From<WebSocketMessage> for StreamReader<'r> {
+    fn from(message: WebSocketMessage) -> Self {
+        Self { inner: StreamKind::WebSocket(message.inner()), state: State::Pending }
+    }
+}
+
 impl AsyncRead for DataStream<'_> {
     #[inline(always)]
     fn poll_read(
@@ -269,6 +278,8 @@ impl Stream for StreamKind<'_> {
             StreamKind::Multipart(mp) => Pin::new(mp).poll_next(cx)
                 .map_err_ext(|e| io::Error::new(io::ErrorKind::Other, e)),
             StreamKind::Empty => Poll::Ready(None),
+            StreamKind::WebSocket(rx) => Pin::new(rx).poll_recv(cx)
+                .map(|b| b.map(|b| Ok(b))),
         }
     }
 
@@ -277,6 +288,7 @@ impl Stream for StreamKind<'_> {
             StreamKind::Body(body) => body.size_hint(),
             StreamKind::Multipart(mp) => mp.size_hint(),
             StreamKind::Empty => (0, Some(0)),
+            StreamKind::WebSocket(_rx) => (0, Some(0)),
         }
     }
 }

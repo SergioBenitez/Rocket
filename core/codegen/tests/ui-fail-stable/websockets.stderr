@@ -1,0 +1,17 @@
+error: WebSocket Event handlers are not permitted to return values
+ --> $DIR/websockets.rs:4:11
+  |
+4 | fn join() -> &'static str {
+  |           ^^
+
+error: WebSocket Event handlers are not permitted to return values
+ --> $DIR/websockets.rs:9:14
+  |
+9 | fn message() -> &'static str {
+  |              ^^
+
+error: WebSocket Event handlers are not permitted to return values
+  --> $DIR/websockets.rs:14:12
+   |
+14 | fn leave() -> &'static str {
+   |            ^^
