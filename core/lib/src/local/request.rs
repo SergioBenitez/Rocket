@@ -306,6 +306,30 @@ macro_rules! pub_request_impl {
         *self._body_mut() = body.as_ref().into();
     }
 
+    /// Create a local request with [`LocalForm`] data
+    ///
+    /// When a request is dispatched after this method is called, it sets the
+    /// header and body contents according to the contents of the [`LocalForm`]
+    /// object.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    #[doc = $import]
+    /// # use rocket::local::form::LocalForm;
+    /// # Client::_test(|client, _, _| {
+    /// let client: &Client = client;
+    /// let rocket = client.rocket();
+    /// # });
+    /// ```
+    pub fn form(
+        self,
+        form: impl Into<LocalForm<'c>>,
+    ) -> LocalRequest<'c>
+    {
+        self._form(form.into())
+    }
+
     /// Dispatches the request, returning the response.
     ///
     /// This method consumes `self` and is the preferred mechanism for
