@@ -13,7 +13,11 @@ diesel_migrations = "1.3"
 [dependencies.sqlx]
 version = "0.5.1"
 default-features = false
-features = ["runtime-tokio-rustls", "sqlite", "macros", "offline", "migrate"]
+features = ["macros", "offline", "migrate"]
+
+[dependencies.rocket_db_pools]
+path = "../../contrib/db_pools/lib/"
+features = ["sqlx_sqlite"]
 
 [dependencies.rocket_sync_db_pools]
 path = "../../contrib/sync_db_pools/lib/"

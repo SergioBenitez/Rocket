@@ -1,0 +1,40 @@
+[package]
+name = "rocket_db_pools"
+version = "0.1.0-dev"
+authors = ["Sergio Benitez <sb@sergio.bz>", "Jeb Rosen <jeb@jebrosen.com>"]
+description = "Rocket async database pooling support"
+repository = "https://github.com/SergioBenitez/Rocket/contrib/db_pools"
+readme = "../README.md"
+keywords = ["rocket", "framework", "database", "pools"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[features]
+deadpool_postgres = ["deadpool-postgres"]
+deadpool_redis = ["deadpool-redis"]
+sqlx_mysql = ["sqlx", "sqlx/mysql"]
+sqlx_postgres = ["sqlx", "sqlx/postgres"]
+sqlx_sqlite = ["sqlx", "sqlx/sqlite"]
+
+[dependencies]
+rocket_db_pools_codegen = { path = "../codegen" }
+
+# integration-specific
+deadpool-postgres = { version = "0.9", default-features = false, optional = true }
+deadpool-redis = { version = "0.8", default-features = false, optional = true }
+mongodb = { version = "1", default-features = false, features = ["tokio-runtime"], optional = true }
+mysql_async = { version = "0.27", default-features = false, optional = true }
+redis = { version = "0.20", default-features = false, features = ["aio", "tokio-comp"] }
+sqlx = { version = "0.5", default-features = false, features = ["runtime-tokio-rustls"], optional = true }
+
+[dependencies.rocket]
+path = "../../../core/lib"
+default-features = false
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dev-dependencies.rocket]
+path = "../../../core/lib"
+default-features = false
+features = ["json"]

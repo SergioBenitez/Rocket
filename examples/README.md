@@ -35,7 +35,8 @@ This directory contains projects showcasing Rocket's features.
   * **[`databases`](./databases)** - Implements a CRUD-like "blog" JSON API
     backed by a SQLite database driven by each of `sqlx`, `diesel`, and
     `rusqlite`. Runs migrations automatically for the former two drivers. Uses
-    `contrib` database support for the latter two drivers.
+    `contrib` database support for all drivers (`rocket_db_pools` for the first;
+    `rocket_sync_db_pools` for the other latter two).
 
   * **[`error-handling`](./error-handling)** - Exhibits the use of scoped
     catchers; contains commented out lines that will cause a launch-time error

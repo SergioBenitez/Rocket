@@ -73,6 +73,16 @@ function indir() {
 }
 
 function test_contrib() {
+  DB_POOLS_FEATURES=(
+    deadpool-postgres
+    deadpool-redis
+    mongodb
+    mysql_async
+    sqlx_mysql
+    sqlx_postgres
+    sqlx_sqlite
+  )
+
   SYNC_DB_POOLS_FEATURES=(
     diesel_postgres_pool
     diesel_sqlite_pool
@@ -86,6 +96,11 @@ function test_contrib() {
     tera
     handlebars
   )
+
+  for feature in "${DB_POOLS_FEATURES[@]}"; do
+    echo ":: Building and testing db_pools [$feature]..."
+    $CARGO test -p rocket_db_pools --no-default-features --features $feature $@
+  done
 
   for feature in "${SYNC_DB_POOLS_FEATURES[@]}"; do
     echo ":: Building and testing sync_db_pools [$feature]..."
