@@ -171,9 +171,9 @@ impl<'v> ValueField<'v> {
 }
 
 impl<'v> DataField<'v, '_> {
-    /// Shift the `name` of `self` and return `self` with the shfited `name`.
+    /// Shift the `name` of `self` and return `self` with the shifted `name`.
     ///
-    /// This is identical to [`ValueField::shift()`] but for `DataFields`s. See
+    /// This is identical to [`ValueField::shift()`] but for `DataField`s. See
     /// [`NameView::shift()`] for the details on name "shifting".
     ///
     /// # Example
