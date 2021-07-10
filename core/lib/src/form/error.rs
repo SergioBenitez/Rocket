@@ -381,7 +381,11 @@ impl crate::http::ext::IntoOwned for Errors<'_> {
 
 impl fmt::Display for Errors<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} errors:", self.len())?;
+        if self.len() == 1 {
+            write!(f, "1 error:")?;
+        } else {
+            write!(f, "{} errors:", self.len())?;
+        }
         for error in self.iter() {
             write!(f, "\n{}", error)?;
         }
