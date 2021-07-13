@@ -365,7 +365,7 @@ impl From<&Frame> for Header<'static> {
 }
 
 /// The [X-XSS-Protection] header: filters some forms of reflected [XSS]
-/// attacks. Modern browsers do not support or enorce this header.
+/// attacks. Modern browsers do not support or enforce this header.
 ///
 /// [X-XSS-Protection]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
 /// [XSS]: https://developer.mozilla.org/en-US/docs/Glossary/Cross-site_scripting
