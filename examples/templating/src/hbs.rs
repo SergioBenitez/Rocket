@@ -5,6 +5,14 @@ use rocket_dyn_templates::{Template, handlebars, context};
 
 use self::handlebars::{Handlebars, JsonRender};
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct TemplateContext<'r> {
+    title: &'r str,
+    name: Option<&'r str>,
+    items: Vec<&'r str>,
+}
+
 #[get("/")]
 pub fn index() -> Redirect {
     Redirect::to(uri!("/hbs", hello(name = "Your Name")))
@@ -16,8 +24,6 @@ pub fn hello(name: &str) -> Template {
         title: "Hello",
         name: Some(name),
         items: vec!["One", "Two", "Three"],
-        // This special key tells handlebars which template is the parent.
-        parent: "hbs/layout",
     })
 }
 
@@ -62,6 +68,6 @@ pub fn customize(hbs: &mut Handlebars) {
         </section>
 
         {{/inline}}
-        {{~> (parent)~}}
+        {{> hbs/layout}}
     "#).expect("valid HBS template");
 }
